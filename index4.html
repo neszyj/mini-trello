@@ -36,7 +36,7 @@ button:hover { opacity:0.9; }
 
   <section class="space-y-6 parent-card">
     <form @submit.prevent="addTask()">
-      <input x-model="newTitle" type="text" placeholder="Titre de la tâche">
+      <input x-model="newTitle" type="text" placeholder="Nom de la tâche">
       <textarea x-model="newDesc" placeholder="Description"></textarea>
       <button type="submit" class="bg-black text-white w-full">Ajouter</button>
     </form>
@@ -145,3 +145,4 @@ function taskApp() {
 
 </body>
 </html>
+
