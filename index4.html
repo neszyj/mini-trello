@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Trello</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/alpinejs" defer></script>
+
+<style>
+body { font-family: 'Bebas Neue', sans-serif; background:#fff; padding:2rem; }
+.parent-card { background: rgba(112,108,108,0.7); padding:2rem; border-radius:16px; max-width:1200px; margin:auto; display:flex; flex-direction:column; gap:2rem; }
+.task-card { background:#fff; border:1px solid rgba(0,0,0,0.2); border-radius:16px; padding:1.5rem; display:flex; flex-direction:column; min-height:200px; transition:0.2s; }
+.task-card:hover { transform: translateY(-3px); }
+.status-todo { background:#fff3b0; color:#7b5e00; padding:0.5rem 0.75rem; border-radius:12px; font-weight:500; font-size:0.9rem; }
+.status-doing { background:#cde6f9; color:#1e3a8a; padding:0.5rem 0.75rem; border-radius:12px; font-weight:500; font-size:0.9rem; }
+.status-done { background:#d1f7dc; color:#065f46; padding:0.5rem 0.75rem; border-radius:12px; font-weight:500; font-size:0.9rem; }
+input, textarea, select { padding:0.75rem; width:100%; border-radius:12px; border:1px solid rgba(0,0,0,0.25); font-family:'Bebas Neue'; font-size:1rem; }
+button { cursor:pointer; transition:0.2s; font-family:'Bebas Neue'; }
+button:hover { opacity:0.9; }
+.filter-btn { padding:0.75rem; flex:1; text-align:center; border-radius:12px; color:#000; background:#fff; border:1px solid rgba(0,0,0,0.25); }
+.task-title { font-weight:bold; font-size:1.3rem; }
+.task-desc { margin-top:0.5rem; font-size:1rem; }
+.counter { flex:1; text-align:center; font-size:1rem; }
+</style>
+</head>
+<body>
+
+<div x-data="taskApp()" x-init="loadTasks()" class="max-w-7xl mx-auto space-y-8">
+
+  <header class="text-center mb-8">
+    <h1 class="text-4xl text-black">Mini Trello</h1>
+  </header>
+
+  <section class="space-y-6 parent-card">
+    <form @submit.prevent="addTask()">
+      <input x-model="newTitle" type="text" placeholder="Titre de la tâche">
+      <textarea x-model="newDesc" placeholder="Description"></textarea>
+      <button type="submit" class="bg-black text-white w-full">Ajouter</button>
+    </form>
+  </section>
+
+  <section class="flex gap-4 counter">
+    <div class="counter">Toutes : <span x-text="tasks.length"></span></div>
+    <div class="counter">À faire : <span x-text="countStatus('À faire')"></span></div>
+    <div class="counter">En cours : <span x-text="countStatus('En cours')"></span></div>
+    <div class="counter">Terminé : <span x-text="countStatus('Terminé')"></span></div>
+  </section>
+
+  <section class="flex gap-4 items-center">
+    <button @click="currentFilter='all'" :class="currentFilter==='all'?'bg-black text-white':'bg-white text-black border'" class="filter-btn">Toutes</button>
+    <button @click="currentFilter='À faire'" :class="currentFilter==='À faire'?'bg-black text-white':'bg-white text-black border'" class="filter-btn">À faire</button>
+    <button @click="currentFilter='En cours'" :class="currentFilter==='En cours'?'bg-black text-white':'bg-white text-black border'" class="filter-btn">En cours</button>
+    <button @click="currentFilter='Terminé'" :class="currentFilter==='Terminé'?'bg-black text-white':'bg-white text-black border'" class="filter-btn">Terminé</button>
+    <input type="text" x-model="searchText" placeholder="Rechercher titre..." class="ml-auto p-2 rounded border w-1/3">
+  </section>
+
+  <main class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <template x-for="(task,index) in filteredTasks()" :key="index">
+      <div class="task-card">
+        <div class="flex justify-between items-start mb-4">
+          <div>
+            <h3 class="task-title" x-text="task.title"></h3>
+            <p class="task-desc" x-text="task.desc"></p>
+          </div>
+          <span :class="statusClass(task.status)" x-text="task.status"></span>
+        </div>
+        <div class="flex gap-4 mt-auto">
+          <button @click="confirmDelete(index)" class="bg-black text-white flex-1">Supprimer</button>
+          <select x-model="tasks[index].status" class="flex-1">
+            <option>À faire</option>
+            <option>En cours</option>
+            <option>Terminé</option>
+          </select>
+        </div>
+      </div>
+    </template>
+    <template x-if="tasks.length===0">
+      <p class="col-span-3 text-center italic text-black">Aucune tâche</p>
+    </template>
+  </main>
+
+</div>
+
+<script>
+function taskApp() {
+  return {
+    tasks: [],
+    newTitle: '',
+    newDesc: '',
+    currentFilter: 'all',
+    searchText: '',
+
+    addTask() {
+      if (!this.newTitle.trim()) return;
+      this.tasks.push({
+        title: this.newTitle.trim(),
+        desc: this.newDesc.trim(),
+        status: 'À faire'
+      });
+      this.saveTasks();
+      this.newTitle='';
+      this.newDesc='';
+    },
+
+    confirmDelete(index) {
+      if (confirm('Supprimer cette tâche ?')) {
+        this.tasks.splice(index,1);
+        this.saveTasks();
+      }
+    },
+
+    statusClass(status) {
+      if (status==='À faire') return 'status-todo';
+      if (status==='En cours') return 'status-doing';
+      if (status==='Terminé') return 'status-done';
+      return '';
+    },
+
+    filteredTasks() {
+      return this.tasks.filter(t => {
+        const matchStatus = this.currentFilter==='all' || t.status===this.currentFilter;
+        const matchText = t.title.toLowerCase().includes(this.searchText.toLowerCase());
+        return matchStatus && matchText;
+      });
+    },
+
+    countStatus(status) {
+      return this.tasks.filter(t => t.status===status).length;
+    },
+
+    saveTasks() {
+      localStorage.setItem('tasks', JSON.stringify(this.tasks));
+    },
+
+    loadTasks() {
+      const saved = localStorage.getItem('tasks');
+      if (saved) this.tasks = JSON.parse(saved);
+    }
+  }
+}
+</script>
+
+</body>
+</html>
